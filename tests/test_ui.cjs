@@ -1,0 +1,12 @@
+const assert = require('node:assert/strict');
+const ui = require('../ui.js');
+const fs = require('node:fs');
+const snapshot = JSON.parse(fs.readFileSync('data/snapshot.json','utf8'));
+assert.equal(typeof ui.filterRows, 'function', 'filters not implemented');
+assert.equal(ui.filterRows(snapshot.dyno_runs, {search:'qwen3.8-flash-next-iq2_xs', placement:'5090', status:'finished'}).length, 1);
+assert.equal(ui.filterRows(snapshot.quality_runs, {}).length, 120);
+assert.equal(ui.filterRows(snapshot.dyno_runs, {status:'archived'}).length, 31);
+assert.equal(ui.filterRows(snapshot.dyno_runs, {status:'failed'}).length, 15);
+assert.equal(ui.filterRows(snapshot.dyno_runs, {search:'NO_MATCH'}).length, 0);
+assert.equal(ui.escape('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
+console.log('6 filter and escaping assertions passed');
