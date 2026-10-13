@@ -242,6 +242,32 @@ def snapshot(dyno, quality, matrix):
                          'excluded_reference_or_synthetic_quality': excluded},
               'dyno_setups': setups, 'dyno_runs': runs, 'quality_runs': qruns, 'arenas': arenas,
               'resource_comparisons': resource_comparisons, 'quality_resource_jobs': quality_resource_jobs}
+    registry = load(Path(__file__).resolve().parents[1] / 'SOURCES.json')
+    known_sources = {source['id'] for source in registry['sources']}
+    direct = {'coding': ['quality-coding'], 'mcp': ['quality-mcp', 'mcp-sdk'], 'lcb': ['livecodebench-data'],
+              'design': ['artifactsbench'], 'screenspot': ['screenspot-v2']}
+    for run in qruns:
+        ids = list(direct.get(run['suite'], []))
+        if run['suite'] == 'benchmarks':
+            ids.append('evalscope')
+            for item in run['items']:
+                identity = item.get('id') or ''
+                if identity.startswith('gsm8k'):
+                    ids.append('gsm8k')
+                elif identity.startswith('simpleqa'):
+                    ids.append('simpleqa')
+                else:
+                    raise ValueError('Unknown benchmark source identity; review source registry before export')
+        if not ids or not set(ids).issubset(known_sources):
+            raise ValueError('Missing upstream attribution mapping for Quality suite')
+        run['source_ids'] = sorted(set(ids))
+    result['sources'] = registry['sources']
+    result['licensing'] = {'code_spdx': 'MIT', 'original_compilation_spdx': 'CC-BY-4.0', 'copyright': 'Copyright (c) 2026 YashJ',
+                           'attribution': 'YashJ, Local LLM Benchmarks (Dyno + Quality), snapshot date in generated_at, https://yashj9.github.io/llm-benchmarks/',
+                           'scope': 'Only our original code and original compilation/annotations to the extent applicable rights exist. No relicensing of third-party assets or unprotected facts.',
+                           'code_license_url': 'https://github.com/yashj9/llm-benchmarks/blob/main/LICENSE',
+                           'data_license_url': 'https://github.com/yashj9/llm-benchmarks/blob/main/data/LICENSE',
+                           'sources_url': 'https://github.com/yashj9/llm-benchmarks/blob/main/THIRD_PARTY_NOTICES.md'}
     text = json.dumps(result, allow_nan=False)
     for pattern in (r'[A-Za-z]:[/\\]Users', r'127\.0\.0\.1', r'localhost', r'gh[pousr]_[A-Za-z0-9]{20,}', r'github_pat_', r'"(?:base_url|api_key|authorization|source_hashes)"\s*:', r'"(?:prompt|output)"\s*:\s*"'):
         if re.search(pattern, text, re.I):

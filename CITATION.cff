@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "Credit YashJ when sharing the original benchmark compilation under CC BY 4.0. Preserve MIT notices when redistributing code. See THIRD_PARTY_NOTICES.md for upstream credits and scope."
+title: "Local LLM Benchmarks: Dyno + Quality"
+type: dataset
+authors:
+  - name: "YashJ"
+    website: "https://github.com/yashj9"
+url: "https://yashj9.github.io/llm-benchmarks/"
+repository-code: "https://github.com/yashj9/llm-benchmarks"
+abstract: "An original scores-only compilation of local LLM performance and quality measurements across hardware and inference configurations. Third-party benchmark assets are excluded; unprotected facts are not claimed as exclusive property."
+keywords:
+  - local LLM
+  - benchmark
+  - inference
+  - quality evaluation

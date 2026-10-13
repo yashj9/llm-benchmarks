@@ -54,6 +54,14 @@ node --check app.js
 
 Set `BENCHMARK_WORKSPACE` to the parent of those repositories to run the optional read-only source integration test. That test's initial snapshot counts must be reviewed when genuine new runs are added. Export fails on disallowed content. Review the JSON diff, commit, and push `main`; GitHub Pages deploys the new static snapshot. No nightly job or inference worker is configured.
 
+## Licensing and credit
+
+Copyright (c) 2026 **YashJ**. Original website/exporter code is [MIT](LICENSE); our original scores compilation/annotations, to the extent applicable rights exist, is [CC BY 4.0](data/LICENSE). Third-party benchmark assets, upstream notice texts under `licenses/third-party/`, and unprotected facts are excluded. No non-commercial, share-alike or mandatory UI-branding condition is added.
+
+Recommended data citation: **YashJ, Local LLM Benchmarks (Dyno + Quality), snapshot date recorded in `generated_at`, https://yashj9.github.io/llm-benchmarks/**. [CITATION.cff](CITATION.cff) supplies machine-readable credit. Sharing protected CC BY material requires appropriate attribution, a licence link and indication of changes; redistributing MIT code requires retaining copyright/licence notices. Neither licence invents a duty to credit every private execution or every reuse of an unprotected fact.
+
+Every exported Quality run carries `source_ids`; the downloadable snapshot includes licence scope, author credit and the upstream source registry. Read [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [SOURCES.json](SOURCES.json) before copying external assets: some dataset grants are conflicting or unverified, and credit alone does not clear them. Only original measured scores/annotations are licensed here; no source benchmark questions, hidden tests, screenshots, raw responses or model weights are bundled.
+
 ## Hosting
 
 GitHub Pages serves `main` at the repository root. `.nojekyll` disables Jekyll processing. No build dependencies are needed for the site; it consists of HTML, CSS, JavaScript and a JSON snapshot. For local browsing:
