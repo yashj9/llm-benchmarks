@@ -8,6 +8,8 @@ Public, static scores-only snapshot of local LLM benchmarking on an RTX 5090 (32
 
 - **Combined leaderboard:** the existing Quality arena calculations, with shared suite versions/case sets, per-protocol scores, 90% bootstrap intervals, separate design ratings and representative Dyno speed.
 - **Speed by setup:** active finished Dyno sessions grouped by exact model, engine, context, thinking choice and recorded GPU placement. Every contributing session is linked.
+- **Cold / hot prefill:** saved fresh-prefix / identical-repeat probes, prompt lengths and TTFT, with cache-verification caveats. General long-context prompt rates are shown separately.
+- **System resources:** side-by-side RAM, per-GPU VRAM, CPU load/power, GPU power and temperatures; sort by lower memory/power and filter exact contexts. Dyno setup captures and Quality job captures are separate.
 - **Dyno runs:** all preserved real sessions, including archived and failed attempts, with per-request scores/timing/token counts and recorded settings.
 - **Quality runs:** all preserved real runs, including previous protocols, cancellations, historical benchmark suites and manual design tasks. Per-test scores are public; generated content is not.
 
@@ -22,6 +24,16 @@ Dyno reliability is a different practical-task score, using scored/error request
 Balanced score is 70% quality + 30% log-normalized speed (10–100 tok/s, capped at 100). It is a preference score, not a universal ranking. Quality and speed typically come from different runs; engines, thinking and parallel settings can differ. Compare exact configurations in Details.
 
 **Strata caveat:** the IQ2_XS Dyno sessions hit many small output-token caps. Their low reliability is budget-limited evidence, not the separate Quality score. Preserve both the misses and the warning. GPU mode "both" means both participated; it does not assert one universal device-order policy across engines.
+
+## Prefill and resources
+
+The saved paired probes cover **16 of 19 active Dyno setups**. Each probe sends a fresh randomized prefix then repeats that exact prompt. Their rates are the recorded **prompt tokens / client TTFT**, not native engine prompt-compute throughput. The repeat is an observed hot-prefix test, but **none of these pairs exposed verified cache hits**. The site marks cache evidence unverified instead of claiming verified cached-token processing rates. Prompt lengths span roughly 12K–13K tokens across tokenizers; this is the same 260-record workload, not an exact token-matched workload. Model-load cold start is a different metric. Strata has long-context rates but no saved dedicated pair, so its cold/hot pair values remain missing. General long prefill uses the original >=64K prompt bucket and is shown separately with mixed cache states.
+
+Resource evidence covers **all 19 active Dyno setups** and **9 of 40 preserved Quality jobs**. Unmeasured Quality jobs remain visible as `Not recorded`. Quality job counts are distinct from suite-run counts (120). The eight measured LM Studio Quality jobs used thinking-on; the separate Strata Quality job used thinking-off. Do not compare them as equal generation workloads.
+
+For each accepted Dyno run, timestamp-bounded post-load telemetry yields RAM mean/peak/minimum free memory, loaded-idle RAM, per-GPU VRAM peaks, CPU and GPU mean load/power, and sensor temperatures. Strata also exposes swap and disk I/O. Historical data with missing sensors is not filled with zero. Across repeated sessions, setup summaries use **median session means**, **maximum observed peaks**, and **minimum RAM headroom**. This is whole-system observation, not isolated model allocation. The loaded-idle snapshot is not an unloaded baseline. CPU+GPU power sums CPU package and the two NVIDIA devices only where all three are available at the same sample; it is **not wall power** and excludes other components. No watt-hours or energy-efficiency ranking is invented.
+
+Quality resource rows use the exact managed job ID in the matrix log to link saved telemetry. These capture the complete job’s load/run/unload window and are never assigned per suite as isolated consumption. The resources selector keeps these separate from Dyno post-load workloads. Filter matching contexts/GPU configurations before comparing, and inspect session IDs, source/sensor coverage and generation controls in Details.
 
 ## Privacy and provenance
 

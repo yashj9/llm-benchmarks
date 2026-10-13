@@ -9,6 +9,9 @@ from pathlib import Path
 import re
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from measurements import prefill, resources, pool, median, valid
+
 
 def public_row(row):
     fields = ('id', 'task_id', 'category', 'tier', 'size', 'rep', 'turn', 'sub', 'score', 'passed',
@@ -18,6 +21,8 @@ def public_row(row):
     out = {k: row.get(k) for k in fields if k in row}
     out['error'] = bool(row.get('error'))
     out['hit_token_limit'] = bool((row.get('extra') or {}).get('hit_token_limit')) or (row.get('extra') or {}).get('finish_reason') == 'length'
+    evidence = (row.get('extra') or {}).get('cache_evidence')
+    out['cache_evidence'] = evidence if evidence in ('present', 'unavailable') else 'unavailable'
     return out
 
 
@@ -59,6 +64,117 @@ def date(value):
     return value
 
 
+def enrich_measurements(dyno, quality, matrix, sources, runs, qruns, setups, arenas, strata):
+    """Attach numeric evidence; never reinterpret a general prompt rate as verified hot/cold prefill."""
+    strata_out = dyno / '.hermes-contracts/strata-matrix/run1'
+    accepted = {v.get('session'): mode for mode, v in strata.get('dyno', {}).items()}
+    by_id = {r['id']: r for r in runs}
+    for r in runs:
+        src = sources[r['id']]
+        m = src['meta']
+        paired = []
+        pointer = m.get('matrix_prefill_pair')
+        if pointer:
+            path = Path(pointer)
+            if path.resolve().is_relative_to(matrix.resolve()) and path.exists():
+                paired = load(path, [])
+        src['prefill_rows'] = paired
+        r['prefill'] = prefill(paired)
+        startup = m.get('startup') or {}
+        idle = startup.get('idle_loaded') or {}
+        total_ram = idle.get('windows_ram_total_mb')
+        total_ram = total_ram / 1024 if valid(total_ram) else None
+        start = idle.get('timestamp') or m.get('created_at')
+        end = m.get('finished_at')
+        samples = lines(src['folder'] / 'samples.jsonl')
+        r['resources'] = resources(samples, start, end, total_ram)
+        r['resources']['source'] = 'Dyno samples (post-load, including warm-up)'
+        if r['id'] in accepted:
+            telemetry = lines(strata_out / f"telemetry-{accepted[r['id']]}-dyno.jsonl")
+            r['resources'] = resources(telemetry, m.get('created_at'), end, total_ram)
+            r['resources']['source'] = 'Strata sidecar (accepted Dyno session window only)'
+        # A loaded-idle snapshot is not an unloaded-system baseline; keep that distinction explicit.
+        loaded_ram = idle.get('windows_ram_used_mb')
+        loaded_ram = loaded_ram / 1024 if valid(loaded_ram) else None
+        r['resources']['loaded_idle_ram_gib'] = round(loaded_ram, 3) if loaded_ram is not None else None
+        r['resources']['peak_minus_loaded_idle_ram_gib'] = round(r['resources']['ram_peak_gib'] - loaded_ram, 3) if valid(r['resources']['ram_peak_gib']) and loaded_ram is not None else None
+        if not r['resources']['samples']:
+            recorded = m.get('resources') or {}
+            r['resources']['source'] = 'Dyno recorded summary; sample stream unavailable'
+            for target, source, divisor in [('ram_peak_gib', 'ram_peak_mb', 1024), ('cpu_mean_w', 'cpu_power_mean_w', 1)]:
+                if valid(recorded.get(source)):
+                    r['resources'][target] = recorded[source] / divisor
+    comparisons = []
+    for setup in setups:
+        ids = setup['session_ids']
+        setup['prefill'] = prefill([row for sid in ids for row in sources[sid]['prefill_rows']])
+        setup['resources'] = pool([by_id[sid]['resources'] for sid in ids])
+        comparisons.append({**{k: setup.get(k) for k in ('model', 'engine', 'context', 'thinking', 'placement', 'session_ids', 'sessions_in_group', 'created_at', 'decode_short_tps')},
+                            'resources': setup['resources'], 'kind': 'Dyno setup'})
+    by_setup = {tuple(s['session_ids']): s for s in setups}
+    for arena in arenas:
+        for model in arena['models']:
+            for setup in model['setups'] + ([model['headline']] if model.get('headline') else []):
+                evidence = by_setup.get(tuple(setup['session_ids']))
+                if evidence:
+                    setup['prefill'], setup['resources'] = evidence['prefill'], evidence['resources']
+    # Quality resource captures are associated by the exact managed job ID from the matrix log, not by model-name guessing.
+    job_telemetry = {}
+    for path in matrix.glob('batch-*/progress.json'):
+        ledger = load(path, {})
+        for model in ledger.get('models', []):
+            log = (model.get('quality') or {}).get('log')
+            if not log:
+                continue
+            log = Path(log)
+            if not log.resolve().is_relative_to(matrix.resolve()) or not log.exists():
+                continue
+            ids = set(re.findall(r'"id"\s*:\s*"(quality-[a-z0-9]+)"', log.read_text(encoding='utf-8')))
+            telemetry_path = log.parent / 'resources.jsonl'
+            if len(ids) == 1 and telemetry_path.exists():
+                job_telemetry[ids.pop()] = (model['key'], lines(telemetry_path))
+    groups = {}
+    original = {}
+    for r in qruns:
+        m = load(quality / 'results' / r['id'] / 'meta.json')
+        original[r['id']] = m
+        groups.setdefault(m.get('job_id') or r['id'], []).append(r)
+    quality_jobs = []
+    for job_id, group in groups.items():
+        first = group[0]
+        recorded = original[first['id']]
+        rows, origin = [], 'Not recorded'
+        linked = job_telemetry.get(job_id)
+        if linked and linked[0] == first['model']:
+            rows, origin = linked[1], 'Matrix telemetry: Quality job load/run/unload'
+        if all((original[r['id']].get('model_evidence') or {}).get('source') == 'strata_matrix' for r in group):
+            rows = lines(strata_out / 'telemetry-quality.jsonl')
+            # Match the known completed job only; a historical repeat must not borrow this capture.
+            expected = {rid for step in (strata.get('quality') or {}).get('runs', []) for rid in step.get('results', [])}
+            if not expected or not {r['id'] for r in group}.issubset(expected):
+                rows = []
+            origin = 'Strata telemetry: Quality job load/run/unload' if rows else 'Not recorded'
+        window_start, window_end = None, None
+        if origin.startswith('Strata telemetry'):
+            created = [datetime.datetime.fromisoformat(r['created']).timestamp() for r in group if r.get('created')]
+            finished = [datetime.datetime.fromisoformat(r['finished']).timestamp() for r in group if r.get('finished')]
+            window_start = min(created) - (strata.get('quality') or {}).get('load_s', 0) - 5 if created else None
+            window_end = max(finished) + 5 if finished else None
+        summary = resources(rows, window_start, window_end)
+        summary['source'] = origin
+        states = {r['status'] for r in group}
+        state = 'finished' if states.issubset({'finished', 'needs-review', 'reviewed'}) else 'partial'
+        actual = recorded.get('actual_settings') or {}
+        job = {'id': job_id, 'model': first['model'], 'name': first['name'], 'kind': 'Quality job', 'status': state,
+               'placement': first['placement'], 'engine': first['engine'], 'thinking': first['thinking'], 'max_tokens': first['max_tokens'],
+               'context': actual.get('context_length'), 'created': min(r['created'] or '' for r in group),
+               'session_ids': [r['id'] for r in group], 'suites': [r['suite'] for r in group], 'resources': summary}
+        quality_jobs.append(job)
+        for r in group:
+            r['resource_job_id'] = job_id
+    return comparisons, quality_jobs
+
+
 def snapshot(dyno, quality, matrix):
     dyno, quality, matrix = Path(dyno), Path(quality), Path(matrix)
     os.environ['DYNO_REPO'] = str(dyno)
@@ -73,7 +189,7 @@ def snapshot(dyno, quality, matrix):
         meta = load(p)
         if meta and real(meta.get('model'), meta.get('engine')):
             sid = meta.get('id') or p.parent.name
-            sources[sid] = {'meta': meta, 'rows': lines(p.parent / 'results.jsonl'), 'archived': 'archive' in p.parts}
+            sources[sid] = {'meta': meta, 'rows': lines(p.parent / 'results.jsonl'), 'archived': 'archive' in p.parts, 'folder': p.parent}
     active = [s for s in sources.values() if not s['archived']]
     setups = lb.build_rows(active, placements)
     # "both" identifies participation, not a guaranteed first-device order (Strata has its own split).
@@ -119,11 +235,13 @@ def snapshot(dyno, quality, matrix):
                       'config': evidence.get('config'), 'summary': numeric_tree(m.get('summary') or {}),
                       'items': [public_row(i) for i in lines(p.parent / 'items.jsonl')]})
     arenas = [ar.build(quality / 'results', speed, p['id']) for p in ar.protocols(ar.load_runs(quality / 'results'))]
-    result = {'schema_version': 1, 'generated_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    resource_comparisons, quality_resource_jobs = enrich_measurements(dyno, quality, matrix, sources, runs, qruns, setups, arenas, strata)
+    result = {'schema_version': 2, 'generated_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'hardware': 'RTX 5090 32 GB + RTX 5060 Ti 16 GB; 64 GB system RAM',
               'counts': {'dyno_runs': len(runs), 'quality_runs': len(qruns), 'archived_dyno': sum(r['archived'] for r in runs),
                          'excluded_reference_or_synthetic_quality': excluded},
-              'dyno_setups': setups, 'dyno_runs': runs, 'quality_runs': qruns, 'arenas': arenas}
+              'dyno_setups': setups, 'dyno_runs': runs, 'quality_runs': qruns, 'arenas': arenas,
+              'resource_comparisons': resource_comparisons, 'quality_resource_jobs': quality_resource_jobs}
     text = json.dumps(result, allow_nan=False)
     for pattern in (r'[A-Za-z]:[/\\]Users', r'127\.0\.0\.1', r'localhost', r'gh[pousr]_[A-Za-z0-9]{20,}', r'github_pat_', r'"(?:base_url|api_key|authorization|source_hashes)"\s*:', r'"(?:prompt|output)"\s*:\s*"'):
         if re.search(pattern, text, re.I):

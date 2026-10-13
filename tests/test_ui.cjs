@@ -9,4 +9,5 @@ assert.equal(ui.filterRows(snapshot.dyno_runs, {status:'archived'}).length, 31);
 assert.equal(ui.filterRows(snapshot.dyno_runs, {status:'failed'}).length, 15);
 assert.equal(ui.filterRows(snapshot.dyno_runs, {search:'NO_MATCH'}).length, 0);
 assert.equal(ui.escape('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
-console.log('6 filter and escaping assertions passed');
+assert.equal(ui.filterRows(snapshot.dyno_setups, {context:'32768'}).length, 1, 'Context filter must not combine different workloads');
+console.log('7 filter and escaping assertions passed');

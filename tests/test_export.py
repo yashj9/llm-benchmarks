@@ -47,5 +47,26 @@ class ExportTests(unittest.TestCase):
             self.assertNotIn(private, text)
 
 
+    def test_snapshot_adds_prefill_and_resource_evidence(self):
+        import os, json
+        if not os.environ.get('BENCHMARK_WORKSPACE'):
+            self.skipTest('Local source datasets not mounted')
+        root=Path(os.environ['BENCHMARK_WORKSPACE'])
+        data=export.snapshot(root/'dyno',root/'quality-evals',root/'tools/lmstudio-matrix')
+        self.assertTrue('resource_comparisons' in data, 'Resource comparison export missing')
+        run=next(r for r in data['dyno_runs'] if r['id']=='ses-20261009-145223-e268f3')
+        source=json.loads((root/'tools/lmstudio-matrix/batch-20261009-145222/01-5090/prefill-pair.json').read_text())
+        self.assertEqual(run['prefill']['cold_tps'], round(source[0]['prompt_tps'],3))
+        self.assertEqual(run['prefill']['hot_tps'], round(source[1]['prompt_tps'],3))
+        self.assertFalse(run['prefill']['hot_cache_verified'])
+        strata=next(r for r in data['dyno_runs'] if r['id']=='ses-20261012-233759-1322f3')
+        self.assertIsNone(strata['prefill']['hot_tps'])
+        self.assertGreater(strata['resources']['cpu_temp_peak_c'],0)
+        self.assertLess(strata['resources']['ram_available_min_gib'],2)
+        self.assertGreaterEqual(len(data['quality_resource_jobs']),1)
+        self.assertEqual(len(data['resource_comparisons']),len(data['dyno_setups']))
+        self.assertTrue(all('prefill' in s for s in data['arenas'][0]['models'][0]['setups']))
+
+
 if __name__ == '__main__':
     unittest.main()
