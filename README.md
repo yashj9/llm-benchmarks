@@ -1,6 +1,6 @@
 # Local LLM Benchmarks — Dyno + Quality
 
-Public, static scores-only snapshot of local LLM benchmarking on an RTX 5090 (32 GB), RTX 5060 Ti (16 GB), and 64 GB system RAM.
+Public, static scores-only snapshot of local LLM benchmarking: the original RTX 5090 (32 GB) + RTX 5060 Ti (16 GB), 64 GB system-RAM platform, plus a separate AMD Strix Halo sequential-campaign leaderboard (Framework Desktop / Ryzen AI Max+ 395 / 128 GB unified memory).
 
 **Website:** https://yashj9.github.io/llm-benchmarks/
 
@@ -53,6 +53,43 @@ node --check app.js
 ```
 
 Set `BENCHMARK_WORKSPACE` to the parent of those repositories to run the optional read-only source integration test. That test's initial snapshot counts must be reviewed when genuine new runs are added. Export fails on disallowed content. Review the JSON diff, commit, and push `main`; GitHub Pages deploys the new static snapshot. No nightly job or inference worker is configured.
+
+## AMD Strix Halo sequential campaigns (additive extension)
+
+The `dyno_campaigns` extension adds **3 campaigns / 13 finished model reports**: 11 chat sessions (including the distinct Nail repeat) and 2 embedding-only reports. `campaign-001` contributes 11 reports, `campaign-002-nail-repeat` one, and `campaign-003-unsloth-q8kxl` one. All original snapshot fields, timestamps, counts, record identities and values remain unchanged: 57 original Dyno sessions, 120 Quality suite runs, 19 speed setups, and the original arenas/resources. The original summary cards explicitly refer to that original snapshot, not a fabricated combined total.
+
+Use **Strix Halo campaigns** for the new speed leaderboard and its Details. Hardware / platform filtering composes with search, context and GPU-placement filters in every view. `legacy-snapshot` means membership in the original NVIDIA snapshot; no per-record hardware field is retroactively invented and unknown placements remain unknown. AMD results have an explicit `amd-strix-halo` platform. Selecting AMD in an original-only view correctly yields no matching results; there are no AMD Quality runs to merge into the combined arena.
+
+This is intentionally a separate protocol, not a conversion into the old setup/reliability schema. The new battery mixes practical tasks and cache probes, includes thinking, and lacks comparable Quality scores. Speed-only results must not enter the Quality/balanced arena or inherit its reliability policy. Rows retain exact session IDs, campaign and attempt IDs, model tags/digests, configured/effective contexts, thinking selection, source code/fixture versions, source SHA-256 provenance, and coarse metadata plus separate GGUF tensor type evidence. Runtime version and MTP acceptance remain unmeasured; a model tag is not a verified quantization label.
+
+Hardware: operator-supplied **Framework Desktop / AMD Ryzen AI Max+ 395 (Strix Halo) / 128 GB unified memory**. The source additionally records `AMD RYZEN AI MAX+ 395 w/ Radeon 8060S` and OS-visible memory (not installed memory). Do not reinterpret the small driver VRAM aperture or GTT mappings as dedicated VRAM/model allocation. Details expose selected numerical telemetry aggregates only; PPT package power is not wall power or the original CPU-plus-two-NVIDIA-GPUs metric. Foreign residency/eviction counts are comparison variables, not proof of concurrent inference.
+
+### Reduction and validity
+
+- Sustained speed is the median of successful raw requests with **at least 256 output tokens**, excluding calibration/warm-up/first-request probes. Output counts include thinking; stopped or token-capped generations can qualify as speed evidence, not answer-quality evidence. Request count, errors, excluded count, min/max and per-workload reductions remain available. One-token million-token/s calibration artifacts never enter rankings.
+- Cold prefill uses **new tokens / native prompt-evaluation duration**, at the largest strictly valid uncached cache-probe size. It is not the original site's prompt/TTFT proxy. Fully cached replay is summarized by TTFT, not an inflated whole-prompt throughput. Depth is shown separately for cold and cached summaries; missing values stay missing.
+- Every cache cell retains exact request ID, nominal depth, actual token counts, repetition, mode, fit, strict validity, TTFT and rates. Invalid uncached cells are disclosed but excluded from cold summaries; valid cached/partial cells and other sustained requests are still usable speed observations. Thus a finished battery is not automatically strict complete coverage.
+- Nail's two runs retain **182 cached prefix tokens** on all 15 nominally uncached cells each; Qwen3.8 and Swift retain **42**. Llama3.2 also has strict-invalid uncached cells (15–23 reused tokens). No thresholds were loosened. `campaign-001` and Nail repeat retain `complete=false`; Unsloth campaign retains `complete=true`. Campaign 001 discloses three unselected/superseded attempts and its historical memory-headroom stop. Only ledger-selected finished reports are ranked; an old stop record is not the final campaign status.
+- Embedding reports have no invented chat session ID or decoding/prefill speed. Batch-1/batch-8 median latency, all six measurements, dimensions and finite-vector validity are retained without input text or vectors.
+
+### Reproduce the append-only import
+
+No dependencies or source-runtime imports are needed. Source directories are read-only; no inference, service changes or uploads occur. `CAMPAIGN_ROOT` is the local directory containing the three campaign folders:
+
+```sh
+python scripts/import_campaigns.py --snapshot data/snapshot.json --out data/snapshot.json \
+  --campaign "$CAMPAIGN_ROOT/campaign-001" \
+  --campaign "$CAMPAIGN_ROOT/campaign-002-nail-repeat" \
+  --campaign "$CAMPAIGN_ROOT/campaign-003-unsloth-q8kxl"
+DYNO_CAMPAIGN_ROOT="$CAMPAIGN_ROOT" python -m unittest discover -s tests -v
+node tests/test_ui.cjs
+node --check app.js
+node --check ui.js
+```
+
+Identical re-imports are idempotent; a changed existing campaign/run identity fails closed instead of overwriting it. Source pointers must stay inside the campaign/attempt. The exporter constructs an allowlist and scans the extension for private paths, endpoints and content fields; raw prompts, generated answers, vectors, logs and templates never enter the public extension. Existing `generated_at` remains the original snapshot date; run timestamps establish the new evidence dates. Do not run the original replacement exporter directly over the combined publication: export the original protocol to a separate staging file, preserve/reconcile existing records, then apply this additive importer after review.
+
+Tests deeply compare every original top-level value/record against the git baseline, verify repeats/cache/embedding coverage, privacy and source-pointer guards, and (with `DYNO_CAMPAIGN_ROOT`) rebuild from the real sources, test idempotence and reject identity conflicts. Optional original-source integration tests still need the older private Quality/matrix datasets.
 
 ## Licensing and credit
 
