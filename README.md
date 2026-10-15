@@ -91,6 +91,73 @@ Identical re-imports are idempotent; a changed existing campaign/run identity fa
 
 Tests deeply compare every original top-level value/record against the git baseline, verify repeats/cache/embedding coverage, privacy and source-pointer guards, and (with `DYNO_CAMPAIGN_ROOT`) rebuild from the real sources, test idempotence and reject identity conflicts. Optional original-source integration tests still need the older private Quality/matrix datasets.
 
+## External Dyno practical-v1 (additive, candidate-only)
+
+`scripts/import_campaigns.py` is specific to the Ollama sequential report contract. Use
+`scripts/import_external_dyno.py` for the external wrapper's
+`dyno-external-campaign-v1` ledger. It adds a separate `external_dyno` extension;
+**every original top-level value, including the entire existing `dyno_campaigns`
+extension, is preserved deeply**. Original Quality, Balanced, speed, resource and
+history views do not absorb these incompatible workloads.
+
+New **External Dyno speed** and **Practical-v1 task quality** views work with old
+snapshots (empty, not fabricated). They use the same platform/context/placement/
+search filters and expose verified engine versions, session IDs and source hashes.
+Practical quality is the arithmetic mean of native scored request rows, including
+multi-turn rows; category means and scored/total coverage are separate. Unscored
+compaction summaries are not zeroes. This is **not** tier-weighted arena Quality,
+a confidence interval or a Balanced score.
+
+The importer is read-only on sources, standard-library-only, and never executes
+source code, probes servers, runs inference, or changes services. It follows
+**only the exact selected session/staging links in `campaign.json`**, enforces
+canonical source paths inside that campaign, and never globs stale attempts.
+Required gates include completed real Halogen **0.18.4** and Strata **0.1.44.1**
+sessions, the full frozen 128K practical-v1 plan/turn/repetition set, matching
+native results and staging, archived native engine/version/model/context/vision/
+MTP probe selectors and thinking request/template readback, pinned artifact
+identity evidence, native session/runtime cleanup and restored service ledger.
+Synthetic, partial, malformed, missing or identity-conflicting evidence fails
+closed. `publication_ready=false` in staging is expected: it is a review gate,
+not proof the measurements are synthetic. Identical re-imports are idempotent;
+changed source hashes for an existing campaign/session are rejected.
+
+Sustained decode is the median over battery requests with **at least 256 output
+tokens**, including thinking. Startup, calibration and count probes are not part
+of the validated battery results. Native prefill and MTP acceptance remain null;
+absent cache evidence is null, while an explicitly measured zero remains zero.
+Configured 128K is not proof of near-window occupancy. Execution completion and
+strict scientific coverage remain distinct. Host-wide RAM and AMD **shared
+package PPT** include concurrent workloads; RAM/GTT/aperture are never summed.
+Power sorting uses one recorded package only, never a multi-device sum. Selected
+sensor aggregates retain numerical coverage; raw sensor/device inventory, local
+paths, endpoints, machine IDs, prompts, generated text, templates, images,
+environment, vectors and raw error text never enter the fresh public allowlist.
+
+Create a **candidate outside `data/`**, after both real sessions and restoration
+have finished (substitute the exact campaign directory if rerun):
+
+```sh
+python3 scripts/import_external_dyno.py --snapshot data/snapshot.json \
+  --campaign /home/yj/agent-ecosystem/projects/plans/dyno-metric/patch/new-external-campaign/campaign-002 \
+  --out /home/yj/.hermes/profiles/patch/cache/scratch/external-dyno-candidate.json
+python3 -m unittest discover -s tests -v
+node tests/test_ui.cjs
+node tests/test_external_ui.cjs
+node --check app.js
+node --check ui.js
+```
+
+The CLI refuses both input-snapshot and repository public-snapshot overwrite.
+Review the candidate, deep-preservation/privacy evidence and real-browser views
+before deliberately replacing the public file in a separate publication step.
+No candidate or synthetic result is committed by these tests. Python fixtures
+are explicitly `synthetic=true` on disk and rejected by production; happy-path
+unit tests simulate the real-source gate only in a patched in-memory reader.
+The JS integration test uses explicitly synthetic **in-memory** rows and exercises
+old/new views, filters, escaping and Details. Those tests prove code behavior,
+not real engine measurements. Real-source and browser acceptance remain required.
+
 ## Licensing and credit
 
 Copyright (c) 2026 **YashJ**. Original website/exporter code is [MIT](LICENSE); our original scores compilation/annotations, to the extent applicable rights exist, is [CC BY 4.0](data/LICENSE). Third-party benchmark assets, upstream notice texts under `licenses/third-party/`, and unprotected facts are excluded. No non-commercial, share-alike or mandatory UI-branding condition is added.
