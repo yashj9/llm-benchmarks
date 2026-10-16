@@ -64,10 +64,29 @@ def date(value):
     return value
 
 
+def strata_runs(dyno):
+    """Every saved Strata matrix run (run1 = IQ2_XS, later runs add quantizations), oldest first."""
+    base = dyno / '.hermes-contracts/strata-matrix'
+    return [(p.parent, load(p, {})) for p in sorted(base.glob('run*/results.json'))]
+
+
+def strata_quality_passes(strata):
+    """Quality telemetry windows: run1 has one capture; later runs list one capture per protocol pass."""
+    passes = []
+    for folder, st in strata:
+        if st.get('quality'):
+            passes.append({'folder': folder, 'telemetry': 'telemetry-quality.jsonl', 'load_s': st['quality'].get('load_s', 0),
+                           'expected': {rid for step in st['quality'].get('runs', []) for rid in step.get('results', [])}})
+        for qp in st.get('quality_passes', []):
+            passes.append({'folder': folder, 'telemetry': qp.get('telemetry'), 'load_s': qp.get('load_s', 0),
+                           'expected': {rid for step in qp.get('runs', []) for rid in step.get('results', [])}})
+    return passes
+
+
 def enrich_measurements(dyno, quality, matrix, sources, runs, qruns, setups, arenas, strata):
     """Attach numeric evidence; never reinterpret a general prompt rate as verified hot/cold prefill."""
-    strata_out = dyno / '.hermes-contracts/strata-matrix/run1'
-    accepted = {v.get('session'): mode for mode, v in strata.get('dyno', {}).items()}
+    accepted = {v.get('session'): (mode, folder) for folder, st in strata for mode, v in st.get('dyno', {}).items() if v.get('session')}
+    passes = strata_quality_passes(strata)
     by_id = {r['id']: r for r in runs}
     for r in runs:
         src = sources[r['id']]
@@ -90,7 +109,8 @@ def enrich_measurements(dyno, quality, matrix, sources, runs, qruns, setups, are
         r['resources'] = resources(samples, start, end, total_ram)
         r['resources']['source'] = 'Dyno samples (post-load, including warm-up)'
         if r['id'] in accepted:
-            telemetry = lines(strata_out / f"telemetry-{accepted[r['id']]}-dyno.jsonl")
+            mode, folder = accepted[r['id']]
+            telemetry = lines(folder / f"telemetry-{mode}-dyno.jsonl")
             r['resources'] = resources(telemetry, m.get('created_at'), end, total_ram)
             r['resources']['source'] = 'Strata sidecar (accepted Dyno session window only)'
         # A loaded-idle snapshot is not an unloaded-system baseline; keep that distinction explicit.
@@ -147,18 +167,18 @@ def enrich_measurements(dyno, quality, matrix, sources, runs, qruns, setups, are
         linked = job_telemetry.get(job_id)
         if linked and linked[0] == first['model']:
             rows, origin = linked[1], 'Matrix telemetry: Quality job load/run/unload'
+        strata_pass = None
         if all((original[r['id']].get('model_evidence') or {}).get('source') == 'strata_matrix' for r in group):
-            rows = lines(strata_out / 'telemetry-quality.jsonl')
-            # Match the known completed job only; a historical repeat must not borrow this capture.
-            expected = {rid for step in (strata.get('quality') or {}).get('runs', []) for rid in step.get('results', [])}
-            if not expected or not {r['id'] for r in group}.issubset(expected):
-                rows = []
+            # Match the known completed pass only; a historical repeat must not borrow this capture.
+            ids = {r['id'] for r in group}
+            strata_pass = next((p for p in passes if p['expected'] and ids.issubset(p['expected']) and p['telemetry']), None)
+            rows = lines(strata_pass['folder'] / strata_pass['telemetry']) if strata_pass else []
             origin = 'Strata telemetry: Quality job load/run/unload' if rows else 'Not recorded'
         window_start, window_end = None, None
         if origin.startswith('Strata telemetry'):
             created = [datetime.datetime.fromisoformat(r['created']).timestamp() for r in group if r.get('created')]
             finished = [datetime.datetime.fromisoformat(r['finished']).timestamp() for r in group if r.get('finished')]
-            window_start = min(created) - (strata.get('quality') or {}).get('load_s', 0) - 5 if created else None
+            window_start = min(created) - strata_pass['load_s'] - 5 if created else None
             window_end = max(finished) + 5 if finished else None
         summary = resources(rows, window_start, window_end)
         summary['source'] = origin
@@ -198,10 +218,9 @@ def snapshot(dyno, quality, matrix):
             s['placement_label'] = 'Both GPUs'
     speed = {'available': True, 'rows': setups, 'failed': lb.failed_sessions(active), 'sessions': len(active)}
     runs = []
-    strata_path = dyno / '.hermes-contracts/strata-matrix/run1/results.json'
-    strata = load(strata_path, {})
+    strata = strata_runs(dyno)
     configs = {d.get('session'): {'name': d.get('config'), 'engine': 'Strata', 'max_context': d.get('max_context')}
-               for d in strata.get('dyno', {}).values()}
+               for _, st in strata for d in st.get('dyno', {}).values()}
     config_keys = ('context_length', 'parallel', 'gpu_offload', 'flash_attention', 'use_mmap', 'eval_batch_size', 'kv_cache_quantization')
     for sid, s in sources.items():
         m, rows = s['meta'], s['rows']

@@ -32,9 +32,9 @@ class ExportTests(unittest.TestCase):
             self.skipTest('Local source datasets not mounted; set BENCHMARK_WORKSPACE for read-only integration verification')
         root = Path(os.environ['BENCHMARK_WORKSPACE'])
         data = export.snapshot(root / 'dyno', root / 'quality-evals', root / 'tools/lmstudio-matrix')
-        self.assertEqual(len(data['dyno_runs']), 57)
-        self.assertEqual(len(data['quality_runs']), 120)
-        self.assertEqual(len({r['id'] for r in data['dyno_runs']}), 57)
+        self.assertEqual(len(data['dyno_runs']), 59)
+        self.assertEqual(len(data['quality_runs']), 128)
+        self.assertEqual(len({r['id'] for r in data['dyno_runs']}), 59)
         self.assertTrue(any(r['archived'] for r in data['dyno_runs']))
         ranked = {s for r in data['dyno_setups'] for s in r['session_ids']}
         self.assertFalse(any(r['archived'] and r['id'] in ranked for r in data['dyno_runs']))
@@ -66,6 +66,25 @@ class ExportTests(unittest.TestCase):
         self.assertGreaterEqual(len(data['quality_resource_jobs']),1)
         self.assertEqual(len(data['resource_comparisons']),len(data['dyno_setups']))
         self.assertTrue(all('prefill' in s for s in data['arenas'][0]['models'][0]['setups']))
+
+    def test_strata_runs_and_quality_passes_support_several_quantizations(self):
+        import json, tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / '.hermes-contracts/strata-matrix'
+            for name, results in (('run1', {'dyno': {'5090': {'session': 'ses-a', 'config': 'c1'}},
+                                            'quality': {'load_s': 20, 'runs': [{'results': ['coding-1', 'mcp-1']}]}}),
+                                  ('run2-iq3_s', {'dyno': {'5090': {'session': 'ses-b', 'config': 'c2'}},
+                                                  'quality_passes': [{'telemetry': 'on.jsonl', 'load_s': 0, 'runs': [{'results': ['coding-2']}]},
+                                                                     {'telemetry': 'off.jsonl', 'load_s': 0, 'runs': [{'results': ['coding-3']}]}]})):
+                (base / name).mkdir(parents=True)
+                (base / name / 'results.json').write_text(json.dumps(results))
+            runs = export.strata_runs(Path(tmp))
+            self.assertEqual([f.name for f, _ in runs], ['run1', 'run2-iq3_s'])
+            passes = export.strata_quality_passes(runs)
+            self.assertEqual([(p['telemetry'], sorted(p['expected'])) for p in passes],
+                             [('telemetry-quality.jsonl', ['coding-1', 'mcp-1']), ('on.jsonl', ['coding-2']), ('off.jsonl', ['coding-3'])])
+            self.assertEqual(passes[0]['load_s'], 20)
+            self.assertEqual(export.strata_runs(Path(tmp) / 'missing'), [])
 
 
 if __name__ == '__main__':
