@@ -14,7 +14,7 @@ const campaigns = snapshot.dyno_campaigns.runs;
 assert.equal(ui.filterRows(campaigns, {platform:'amd-strix-halo'}).length, 13);
 assert.equal(ui.filterRows(campaigns, {platform:'legacy-snapshot'}).length, 0);
 assert.equal(ui.filterRows(snapshot.dyno_runs, {platform:'amd-strix-halo'}).length, 0);
-assert.equal(ui.filterRows(snapshot.dyno_runs, {platform:'legacy-snapshot'}).length, 59);
+assert.equal(ui.filterRows(snapshot.dyno_runs, {platform:'legacy-snapshot'}).length, 60);
 assert.equal(ui.filterRows(campaigns, {platform:'amd-strix-halo',search:'nail-',context:'131072',placement:'unified-memory'}).length, 2);
 assert.equal(ui.filterRows(campaigns, {platform:'amd-strix-halo',context:'24576'}).length, 1);
 assert.equal(ui.filterRows(campaigns, {platform:'amd-strix-halo',context:'40960'}).length, 1);
