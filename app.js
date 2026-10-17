@@ -102,7 +102,7 @@ for(const b of document.querySelectorAll('[data-view]'))b.onclick=()=>setView(b.
 for(const id of ['search','platform','placement','context','resource-mode','protocol','status','sort'])$(id).addEventListener(id==='search'?'input':'change',()=>data&&render());
 $('reset').onclick=()=>{for(const id of ['search','platform','placement','context','status'])$(id).value='';$('sort').value='score';render()};
 window.addEventListener('hashchange',()=>{if(location.hash.slice(1)!==view)setView(location.hash.slice(1))});
-fetch('data/snapshot.json?v=6').then(r=>{if(!r.ok)throw new Error(`Snapshot HTTP ${r.status}`);return r.json()}).then(d=>{
+fetch('data/snapshot.json?v=7').then(r=>{if(!r.ok)throw new Error(`Snapshot HTTP ${r.status}`);return r.json()}).then(d=>{
  data=d;if(!data.arenas.length)throw new Error('No recorded quality protocols');
  $('snapshot').textContent=`${data.hardware} · snapshot ${stamp(data.generated_at)}${data.dyno_campaigns?` · ${data.dyno_campaigns.runs.length} AMD Strix Halo campaign runs added (separate protocol)`:''}${data.external_dyno?` · ${data.external_dyno.runs.length} external practical-v1 sessions (separate protocol)`:''}`;
 
