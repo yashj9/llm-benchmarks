@@ -112,15 +112,60 @@ The importer is read-only on sources, standard-library-only, and never executes
 source code, probes servers, runs inference, or changes services. It follows
 **only the exact selected session/staging links in `campaign.json`**, enforces
 canonical source paths inside that campaign, and never globs stale attempts.
-Required gates include completed real Halogen **0.18.4** and Strata **0.1.44.1**
-sessions, the full frozen 128K practical-v1 plan/turn/repetition set, matching
-native results and staging, archived native engine/version/model/context/vision/
-MTP probe selectors and thinking request/template readback, pinned artifact
-identity evidence, native session/runtime cleanup and restored service ledger.
+Required gates include completed real sessions of an **approved engine/model**
+(table below), the full frozen 128K practical-v1 plan/turn/repetition set for the
+declared coverage, matching native results and staging, archived native
+engine/version/model/context/vision/speculative probe selectors and thinking
+request/template readback, pinned artifact identity evidence, native
+session/runtime cleanup and a restored service ledger. Campaigns are
+**single-engine**: `manifest.json` `engines` may hold one row and `campaign.json`
+`models[]` one matching `{engine, session_id, status, session, website_staging,
+resource_summary}` link. Run one campaign directory per engine/model and pass
+several `--campaign` arguments to append them all.
+
 Synthetic, partial, malformed, missing or identity-conflicting evidence fails
 closed. `publication_ready=false` in staging is expected: it is a review gate,
 not proof the measurements are synthetic. Identical re-imports are idempotent;
 changed source hashes for an existing campaign/session are rejected.
+
+### Approved engine / model allowlist (fail closed)
+
+The table lives in `scripts/import_external_dyno.py` (`ENGINES`, `MODELS`); anything
+else is rejected.
+
+| Engine | Version (pinned) | Image digest | Model label | Quantization | Speculative mode | Vision | Plan coverage |
+|---|---|---|---|---|---|---|---|
+| halogen | 0.18.4 | – | Flash-Next | any safe label (legacy) | mtp | verified | full-practical-v1 |
+| strata | 0.1.44.1 | – | Flash-Next | any safe label (legacy) | mtp | verified | full-practical-v1 |
+| gufo | 0.18.0 | `sha256:4d784ef0…9704e81` | Flash-Next | UD-Q4_K_XL | mtp | verified | full-practical-v1 |
+| gufo | 0.18.0 | same | Qwen3.8-27B | UD-Q4_K_XL | dflash2 | verified | full-practical-v1 |
+| gufo | 0.18.0 | same | DeepSeek V4 Flash | IQ2XXS | dspark | unsupported-declared | **text-only** |
+| ollama | 0.40.5 | – | Qwen3.8-27B (served id `qwen3.8-27b:ud-q4_k_xl-mmproj-f16-mtp-q4_0-128k`) | UD-Q4_K_XL | mtp | verified | full-practical-v1 |
+
+New-contract staging bundles add `speculative_mode`, `quantization`,
+`weights_total_bytes` and `plan_coverage` (all four or none; an optional
+`model_label` must agree with the table). The importer matches the model by
+engine + quantization + speculative mode, and plan coverage must equal the
+approved entry. **Text-only** (image category omitted, everything else frozen) is
+accepted only for a model whose manifest row declares
+`vision: {"status": "unsupported", "evidence": "<non-empty>"}` and which the
+table marks unsupported; text-only for a vision-capable model, or a full plan for
+a text-only model, is rejected. Vision is tri-state in the public record:
+`verified` (native probe proved it) or `unsupported-declared`. The `mtp` probe
+claim carries the speculative-decoding probe for every mode. Native prefill and
+speculative acceptance stay null without attributable counters.
+
+Public records add `model_label`, `quantization`, `speculative_mode`,
+`plan_coverage`, `vision` and `weights_total_bytes` (alongside `engine` and
+`runtime_version`). The two already-published campaign-003 records predate these
+fields and are **never rewritten** (append-only, byte-identical re-import); the UI
+derives only the facts that contract proved (Flash-Next, mtp, full coverage,
+vision verified) and shows quantization as "not recorded". The two external views
+gain engine / model / task-coverage filters, a *Group by model* mode for
+same-model-across-engines comparison, engine badges, quantization and
+speculative-mode columns and a prominent **TEXT-ONLY** badge. Text-only practical
+scores are listed after all full-coverage rows and are never silently ranked or
+averaged against them.
 
 Sustained decode is the median over battery requests with **at least 256 output
 tokens**, including thinking. Startup, calibration and count probes are not part
@@ -134,12 +179,15 @@ sensor aggregates retain numerical coverage; raw sensor/device inventory, local
 paths, endpoints, machine IDs, prompts, generated text, templates, images,
 environment, vectors and raw error text never enter the fresh public allowlist.
 
-Create a **candidate outside `data/`**, after both real sessions and restoration
-have finished (substitute the exact campaign directory if rerun):
+Create a **candidate outside `data/`**, after the real campaign sessions and
+service restoration have finished. Pass the already published campaign plus every
+new finished single-engine campaign directory (substitute the real directories):
 
 ```sh
+CAMPAIGNS=/home/yj/agent-ecosystem/projects/plans/dyno-metric/patch/new-external-campaign
 python3 scripts/import_external_dyno.py --snapshot data/snapshot.json \
-  --campaign /home/yj/agent-ecosystem/projects/plans/dyno-metric/patch/new-external-campaign/campaign-002 \
+  --campaign "$CAMPAIGNS/campaign-003" \
+  --campaign "$CAMPAIGNS/<finished-gufo-or-ollama-campaign>" \
   --out /home/yj/.hermes/profiles/patch/cache/scratch/external-dyno-candidate.json
 python3 -m unittest discover -s tests -v
 node tests/test_ui.cjs
@@ -147,6 +195,9 @@ node tests/test_external_ui.cjs
 node --check app.js
 node --check ui.js
 ```
+
+Re-importing campaign-003 alone must print `external_campaigns 1`/`external_runs 2`
+semantics unchanged and write a byte-identical file.
 
 The CLI refuses both input-snapshot and repository public-snapshot overwrite.
 Review the candidate, deep-preservation/privacy evidence and real-browser views

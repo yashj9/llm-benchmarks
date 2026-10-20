@@ -39,11 +39,16 @@ class CampaignTests(unittest.TestCase):
 
     def test_all_legacy_values_and_record_identities_preserved(self):
         # Baseline pinned in git for this additive publication; not a count-only check.
-        before = json.loads(subprocess.check_output(['git', 'show', 'HEAD:data/snapshot.json'], cwd=ROOT))
+        before = json.loads(subprocess.check_output(['git', 'show', '999a750:data/snapshot.json'], cwd=ROOT))
         after = imp.load(ROOT / 'data/snapshot.json')
         for key, value in before.items():
             if key != 'dyno_campaigns':
+                if key == 'external_dyno':  # additive publication: campaign-003's records stay as the prefix
+                    self.assertEqual(after[key]['runs'][:len(value['runs'])], value['runs'])
+                    self.assertEqual(after[key]['campaigns'][:len(value['campaigns'])], value['campaigns'])
+                    continue
                 self.assertEqual(after[key], value, key)
+        self.assertEqual(after['dyno_campaigns'], before['dyno_campaigns'])
         for collection in ('dyno_runs', 'quality_runs', 'dyno_setups', 'arenas', 'resource_comparisons', 'quality_resource_jobs'):
             self.assertEqual(len(before[collection]), len(after[collection]))
 
