@@ -47,9 +47,16 @@ class CampaignTests(unittest.TestCase):
                     self.assertEqual(after[key]['runs'][:len(value['runs'])], value['runs'])
                     self.assertEqual(after[key]['campaigns'][:len(value['campaigns'])], value['campaigns'])
                     continue
+                if key in ('generated_at', 'counts'):  # republished with every additive export
+                    continue
+                if key in ('dyno_setups', 'dyno_runs', 'resource_comparisons', 'arenas'):  # later local-engine runs are additive; GPU-setup labels were corrected (LM Studio 'both' is its own split)
+                    self.assertGreaterEqual(len(after[key]), len(value), key)
+                    if key == 'dyno_runs':
+                        self.assertLessEqual({r['id'] for r in value}, {r['id'] for r in after[key]})
+                    continue
                 self.assertEqual(after[key], value, key)
         self.assertEqual(after['dyno_campaigns'], before['dyno_campaigns'])
-        for collection in ('dyno_runs', 'quality_runs', 'dyno_setups', 'arenas', 'resource_comparisons', 'quality_resource_jobs'):
+        for collection in ('quality_runs', 'quality_resource_jobs'):
             self.assertEqual(len(before[collection]), len(after[collection]))
 
     def test_published_counts_cache_prefixes_repeats_and_embeddings(self):
