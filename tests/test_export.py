@@ -32,9 +32,9 @@ class ExportTests(unittest.TestCase):
             self.skipTest('Local source datasets not mounted; set BENCHMARK_WORKSPACE for read-only integration verification')
         root = Path(os.environ['BENCHMARK_WORKSPACE'])
         data = export.snapshot(root / 'dyno', root / 'quality-evals', root / 'tools/lmstudio-matrix')
-        self.assertEqual(len(data['dyno_runs']), 60)
+        self.assertEqual(len(data['dyno_runs']), 105)
         self.assertEqual(len(data['quality_runs']), 128)
-        self.assertEqual(len({r['id'] for r in data['dyno_runs']}), 60)
+        self.assertEqual(len({r['id'] for r in data['dyno_runs']}), 105)
         self.assertTrue(any(r['archived'] for r in data['dyno_runs']))
         ranked = {s for r in data['dyno_setups'] for s in r['session_ids']}
         self.assertFalse(any(r['archived'] and r['id'] in ranked for r in data['dyno_runs']))

@@ -79,13 +79,13 @@ async function exercise(snapshot, hasExternal) {
   elem('resource-mode').value = 'dyno';
   elem('sort').value = 'score';  // default option in the real page
   const sandbox = {BenchmarkUI: ui, document: {getElementById: elem, querySelectorAll: () => [], querySelector: elem},
-    window: {addEventListener() {}}, location: {hash: ''},
+    window: {addEventListener() {}}, location: {hash: ''}, history: {replaceState() {}}, URLSearchParams,
     fetch: async () => ({ok: true, json: async () => structuredClone(snapshot)}), console};
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync('app.js', 'utf8'), sandbox);
   await new Promise(resolve => setImmediate(resolve));
   assert.ok(!elem('snapshot').textContent.includes('Could not load'), elem('snapshot').textContent);
-  for (const view of ['arena','campaign','speed','prefill','resources','dyno','quality','external','practical']) {
+  for (const view of ['arena','compare','concurrency','campaign','speed','prefill','resources','dyno','quality','external','practical']) {
     vm.runInContext(`setView('${view}')`, sandbox);
     assert.ok(elem('thead').innerHTML.includes('<th'), view);
     if (['external','practical'].includes(view)) {
@@ -104,7 +104,7 @@ async function exercise(snapshot, hasExternal) {
         assert.equal(elem('group-label').hidden, false);
       }
     } else {
-      assert.equal(elem('engine-label').hidden, true, view);
+      assert.equal(elem('engine-label').hidden, !['speed','prefill','resources','dyno','concurrency'].includes(view), view);  // engine/model filters now serve every speed/resource view
       assert.ok(!elem('tbody').innerHTML.includes('SYNTHETIC-ui-only'), 'External must not leak into old views');
     }
   }

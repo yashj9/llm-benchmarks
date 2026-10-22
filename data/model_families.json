@@ -1,0 +1,203 @@
+{
+ "schema": 1,
+ "note": "Maps the engine-specific model ids used in Dyno sessions to one model family, so the same model file can be compared across LM Studio, Ollama, Unsloth Studio and Strata. All engines load the same GGUF file on this machine (no copies).",
+ "families": [
+  {
+   "id": "gemma-4-e4b-qat",
+   "label": "Gemma 4 E4B QAT \u00b7 UD-Q4_K_XL",
+   "params": "4B dense",
+   "vision": true,
+   "mtp": "sidecar drafter",
+   "ids": {
+    "lmstudio": [
+     "gemma-4-e4b-it-qat@q4_k_xl"
+    ],
+    "ollama": [
+     "lmstudio/gemma-4-e4b-it-qat:ud-q4_k_xl"
+    ],
+    "unsloth": [
+     "unsloth/gemma-4-E4B-it-qat-GGUF/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf"
+    ]
+   }
+  },
+  {
+   "id": "gemma-4-12b-agentic-v2",
+   "label": "Gemma 4 12B agentic v2 \u00b7 Q4_K_M",
+   "params": "12B dense",
+   "vision": false,
+   "mtp": "sidecar drafter",
+   "ids": {
+    "lmstudio": [
+     "gemma-4-12b-agentic-fable5-composer2.5-v2-3.5x-tau2@q4_k_m"
+    ],
+    "ollama": [
+     "lmstudio/gemma-4-12b-agentic-v2:q4_k_m-128k"
+    ],
+    "unsloth": [
+     "yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF/gemma4-v2-Q4_K_M.gguf"
+    ]
+   }
+  },
+  {
+   "id": "gemma-4-26b-a4b-hauhaucs",
+   "label": "Gemma 4 26B A4B HauhauCS \u00b7 Q4_K_M",
+   "params": "26B MoE (4B active)",
+   "vision": true,
+   "mtp": "sidecar drafter",
+   "ids": {
+    "lmstudio": [
+     "gemma4-26b-a4b-qat-uncensored-hauhaucs-balanced-mtp@q4_k_m"
+    ],
+    "ollama": [
+     "lmstudio/gemma4-26b-a4b-hauhaucs:q4_k_m-128k"
+    ],
+    "unsloth": [
+     "HauhauCS/Gemma4-26B-A4B-QAT-Uncensored-HauhauCS-Balanced-MTP/Gemma4-26B-A4B-QAT-Uncensored-HauhauCS-Balanced-Q4_K_M.gguf"
+    ]
+   }
+  },
+  {
+   "id": "swift-1.5-qwen3.8-27b",
+   "label": "Swift 1.5 Qwen3.8 27B \u00b7 IQ3_S",
+   "params": "27B dense",
+   "vision": false,
+   "mtp": "embedded",
+   "ids": {
+    "lmstudio": [
+     "swift-1.5-qwen3.8-27b-gsq-rco"
+    ],
+    "ollama": [
+     "lmstudio/swift-1.5-qwen3.8-27b:iq3_s-mtp-native"
+    ],
+    "unsloth": [
+     "ukisai/Swift-1.5-Qwen3.8-27B-GSQ-RCO-GGUF/Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_S-mtp.gguf"
+    ]
+   }
+  },
+  {
+   "id": "qwen3.6-35b-a3b-ud",
+   "label": "Qwen3.6 35B A3B \u00b7 UD-Q4_K_XL",
+   "params": "35B MoE (3B active)",
+   "vision": true,
+   "mtp": "embedded",
+   "ids": {
+    "lmstudio": [
+     "qwen3.6-35b-a3b-mtp"
+    ],
+    "ollama": [
+     "lmstudio/qwen3.6-35b-a3b-mtp:ud-q4_k_xl-native"
+    ],
+    "unsloth": [
+     "unsloth/Qwen3.6-35B-A3B-MTP-GGUF/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf"
+    ]
+   }
+  },
+  {
+   "id": "qwen3.8-27b-ud",
+   "label": "Qwen3.8 27B \u00b7 UD-Q4_K_M",
+   "params": "27B dense",
+   "vision": true,
+   "mtp": "embedded",
+   "ids": {
+    "lmstudio": [
+     "qwen3.8-27b"
+    ],
+    "ollama": [
+     "lmstudio/qwen3.8-27b:ud-q4_k_m-native"
+    ],
+    "unsloth": [
+     "unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf"
+    ]
+   }
+  },
+  {
+   "id": "qwen3.8-27b-turbofcfusion",
+   "label": "Qwen3.8 27B TurboFCFusion \u00b7 Q4_K_M",
+   "params": "27B dense",
+   "vision": true,
+   "mtp": "embedded",
+   "ids": {
+    "lmstudio": [
+     "qwen3.8-27b-turbo-fable-cold-fusion-735-882-heretic-uncensored-neo-coder-max-mtp"
+    ],
+    "ollama": [
+     "lmstudio/qwen3.8-27b-turbo-fcfusion:q4_k_m-mtp-native"
+    ],
+    "unsloth": [
+     "DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF/Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_M.gguf"
+    ]
+   }
+  },
+  {
+   "id": "qwen3.6-35b-a3b-heretic",
+   "label": "Qwen3.6 35B A3B Heretic \u00b7 Q4_K_M",
+   "params": "35B MoE (3B active)",
+   "vision": true,
+   "mtp": "embedded",
+   "ids": {
+    "lmstudio": [
+     "qwen3.6-35b-a3b-uncensored-heretic-native-mtp-preserved"
+    ],
+    "ollama": [
+     "lmstudio/qwen3.6-35b-a3b-heretic:q4_k_m-mtp-native"
+    ],
+    "unsloth": [
+     "llmfan46/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-GGUF/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-Q4_K_M.gguf"
+    ]
+   }
+  },
+  {
+   "id": "qwen3.8-flash-next-iq2_xs",
+   "label": "Qwen3.8 Flash-Next \u00b7 IQ2_XS",
+   "params": "MoE",
+   "vision": true,
+   "mtp": "embedded",
+   "ids": {
+    "openai-compat": [
+     "qwen3.8-flash-next-iq2_xs"
+    ]
+   }
+  },
+  {
+   "id": "qwen3.8-flash-next-iq3_s",
+   "label": "Qwen3.8 Flash-Next \u00b7 IQ3_S",
+   "params": "MoE",
+   "vision": true,
+   "mtp": "embedded",
+   "ids": {
+    "openai-compat": [
+     "qwen3.8-flash-next-iq3_s"
+    ]
+   }
+  },
+  {
+   "id": "qwen3.8-27b-nvfp4",
+   "label": "Qwen3.8 27B \u00b7 NVFP4 (native, vLLM)",
+   "params": "27B dense",
+   "vision": false,
+   "mtp": "embedded",
+   "ids": {
+    "vllm": [
+     "qwen3.8-27b-nvfp4"
+    ]
+   }
+  }
+ ],
+ "engines": {
+  "lmstudio": {
+   "label": "LM Studio"
+  },
+  "ollama": {
+   "label": "Ollama"
+  },
+  "unsloth": {
+   "label": "Unsloth Studio"
+  },
+  "openai-compat": {
+   "label": "Strata (attached)"
+  },
+  "vllm": {
+   "label": "vLLM"
+  }
+ }
+}

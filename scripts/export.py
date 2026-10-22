@@ -54,6 +54,15 @@ def numeric_tree(value):
     return None
 
 
+def public_model(model):
+    """Engine-specific model ids stay as recorded, except local file paths: keep only the repo-relative part under .lmstudio/models."""
+    if isinstance(model, str) and re.match(r'^[A-Za-z]:[/\\]', model):
+        norm = model.replace(chr(92), '/')
+        marker = '/.lmstudio/models/'
+        return norm.split(marker, 1)[1] if marker in norm else norm.rsplit('/', 1)[-1]
+    return model
+
+
 def real(model, engine=None, settings=None):
     return bool(model) and engine != 'fake' and not (settings or {}).get('reference') and not re.match(r'^(reference|fake|smoke|test|synthetic)(-|$)', model, re.I)
 
@@ -207,6 +216,12 @@ def snapshot(dyno, quality, matrix):
     # Prefer active copies when a historical archive has the same ID.
     for p in sorted((dyno / 'data').rglob('session.json'), key=lambda p: 'archive' not in p.parts):
         meta = load(p)
+        if any('concurrency' in part for part in p.parts):
+            continue  # concurrency-v1 sessions are published separately (data/concurrency.json), never mixed into practical-v1 speed rows
+        if any(part.startswith(('ollama-invalid-config', 'unsloth-no-mtp', 'split-invalid', 'lmstudio-concurrency-invalid')) for part in p.parts):
+            continue  # misconfigured Ollama attempts (no MTP / wrong context / duplicated weights): archived, not published
+        if meta and isinstance(meta.get('model'), str):
+            meta['model'] = public_model(meta['model'])
         if meta and real(meta.get('model'), meta.get('engine')):
             sid = meta.get('id') or p.parent.name
             sources[sid] = {'meta': meta, 'rows': lines(p.parent / 'results.jsonl'), 'archived': 'archive' in p.parts, 'folder': p.parent}
@@ -214,7 +229,7 @@ def snapshot(dyno, quality, matrix):
     setups = lb.build_rows(active, placements)
     # "both" identifies participation, not a guaranteed first-device order (Strata has its own split).
     for s in setups:
-        if s['placement'] == 'both':
+        if s['placement'] == 'both' and s.get('engine') in ('strata', 'Strata'):
             s['placement_label'] = 'Both GPUs'
     speed = {'available': True, 'rows': setups, 'failed': lb.failed_sessions(active), 'sessions': len(active)}
     runs = []
@@ -253,7 +268,10 @@ def snapshot(dyno, quality, matrix):
                       'placement': evidence.get('setup', 'unknown'), 'engine': evidence.get('engine', 'unknown'),
                       'config': evidence.get('config'), 'summary': numeric_tree(m.get('summary') or {}),
                       'items': [public_row(i) for i in lines(p.parent / 'items.jsonl')]})
-    arenas = [ar.build(quality / 'results', speed, p['id']) for p in ar.protocols(ar.load_runs(quality / 'results'))]
+    # The combined leaderboard pairs Quality scores with speed; Ollama / Unsloth Studio Dyno sessions have no Quality runs, so they stay out of it
+    # (they appear in the engine comparison, speed and run-history views instead).
+    arena_speed = {**speed, 'rows': [s for s in setups if s['engine'] not in ('ollama', 'unsloth')]}
+    arenas = [ar.build(quality / 'results', arena_speed, p['id']) for p in ar.protocols(ar.load_runs(quality / 'results'))]
     resource_comparisons, quality_resource_jobs = enrich_measurements(dyno, quality, matrix, sources, runs, qruns, setups, arenas, strata)
     result = {'schema_version': 2, 'generated_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'hardware': 'RTX 5090 32 GB + RTX 5060 Ti 16 GB; 64 GB system RAM',
