@@ -123,7 +123,7 @@ for(const id of ['search','platform','placement','context','resource-mode','prot
 $('reset').onclick=()=>{for(const id of FILTER_IDS)$(id).value='';$('sort').value='score';render()};
 window.addEventListener('hashchange',()=>{const {v,p}=readHash();if(v!==view||p.toString()!==new URLSearchParams(location.hash.slice(1).split('&').slice(1).join('&')).toString())setView(v,p)});
 const optional=u=>fetch(u).then(r=>r.ok?r.json():null).catch(()=>null);
-Promise.all([fetch('data/snapshot.json?v=10').then(r=>{if(!r.ok)throw new Error(`Snapshot HTTP ${r.status}`);return r.json()}),optional('data/model_families.json?v=10'),optional('data/concurrency.json?v=10')]).then(([d,fams,conc])=>{
+Promise.all([fetch('data/snapshot.json?v=11').then(r=>{if(!r.ok)throw new Error(`Snapshot HTTP ${r.status}`);return r.json()}),optional('data/model_families.json?v=11'),optional('data/concurrency.json?v=11')]).then(([d,fams,conc])=>{
  data=d;if(fams)globalThis.BenchmarkUI.setFamilies(fams);concurrency=conc;if(!data.arenas.length)throw new Error('No recorded quality protocols');
  $('snapshot').textContent=`${data.hardware} · snapshot ${stamp(data.generated_at)}${data.dyno_campaigns?` · ${data.dyno_campaigns.runs.length} AMD Strix Halo campaign runs added (separate protocol)`:''}${data.external_dyno?` · ${data.external_dyno.runs.length} external practical-v1 sessions (separate protocol)`:''}`;
 

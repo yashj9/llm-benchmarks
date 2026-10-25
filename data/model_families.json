@@ -129,6 +129,18 @@
    }
   },
   {
+   "id": "qwen3.8-27b-turbo-brilliance",
+   "label": "Qwen3.8 27B Turbo Brilliance \u00b7 Q4_K_M",
+   "params": "27B dense",
+   "vision": true,
+   "mtp": "embedded",
+   "ids": {
+    "unsloth": [
+     "DavidAU/Qwen3.8-27B-Turbo-Brilliance-50X-Reasoning-Instruct-NEO-MAX-MTP-GGUF/Qwen3.8-27B-Turbo-Brilliance-50X-RI-NEO-MAX-MTP-Q4_K_M.gguf"
+    ]
+   }
+  },
+  {
    "id": "qwen3.6-35b-a3b-heretic",
    "label": "Qwen3.6 35B A3B Heretic \u00b7 Q4_K_M",
    "params": "35B MoE (3B active)",
