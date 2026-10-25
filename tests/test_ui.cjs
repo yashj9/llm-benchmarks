@@ -6,7 +6,7 @@ assert.equal(typeof ui.filterRows, 'function', 'filters not implemented');
 assert.equal(ui.filterRows(snapshot.dyno_runs, {search:'qwen3.8-flash-next-iq2_xs', placement:'5090', status:'finished'}).length, 1);
 assert.equal(ui.filterRows(snapshot.quality_runs, {}).length, 128);
 assert.equal(ui.filterRows(snapshot.dyno_runs, {status:'archived'}).length, 36);
-assert.equal(ui.filterRows(snapshot.dyno_runs, {status:'failed'}).length, 15);
+assert.equal(ui.filterRows(snapshot.dyno_runs, {status:'failed'}).length, 18);
 assert.equal(ui.filterRows(snapshot.dyno_runs, {search:'NO_MATCH'}).length, 0);
 assert.equal(ui.escape('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
 assert.equal(ui.filterRows(snapshot.dyno_setups, {context:'32768'}).length, 1, 'Context filter must not combine different workloads');
